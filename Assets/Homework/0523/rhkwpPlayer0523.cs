@@ -3,29 +3,21 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerController : MonoBehaviour
+public class rhkwpPlayer0523 : MonoBehaviour
 {
     Rigidbody2D rb;
     private Vector2 inputDir;
     [SerializeField] private float movePower;
     [SerializeField] private float jumpPower;
     [SerializeField] private float maxSpeed;
-    [SerializeField] LayerMask groundLayer;
-    private SpriteRenderer renderer;
     private Animator anim;
-    public bool isGround;
-
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
-        renderer = GetComponent<SpriteRenderer>();
     }
-    private void FixedUpdate()
-    {
-        GroundCheck();
-    }
+
     private void Update()
     {
         Move();
@@ -47,11 +39,7 @@ public class PlayerController : MonoBehaviour
     private void OnMove(InputValue value)
     {
         inputDir = value.Get<Vector2>();
-        anim.SetFloat("MoveSpeed", Mathf.Abs(inputDir.x));
-        if (inputDir.x > 0)
-            renderer.flipX = false;
-        if (inputDir.x < 0)
-            renderer.flipX = true;
+        anim.SetFloat("Speed", Mathf.Abs(inputDir.x));
     }
 
     private void OnJump(InputValue value)
@@ -59,21 +47,12 @@ public class PlayerController : MonoBehaviour
         Jump();
     }
 
-    private void GroundCheck()
+    private void OnTriggerEnter2D(Collider2D collision)
     {
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 1.5f, groundLayer);
-        Debug.DrawRay(transform.position, new Vector3(hit.point.x, hit.point.y) - transform.position, Color.red);
-        if(hit.collider != null)
-        {
-            Debug.Log(hit.collider.gameObject.name);
-            isGround = true;
-            anim.SetBool("IsGround", true);
-        }
-        else
-        {
-            isGround = false;
-            anim.SetBool("IsGround", false);
-            Debug.DrawRay(transform.position, Vector3.down * 1.5f, Color.red);
-        }
+        anim.SetBool("IsGround", true);
+    }
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        anim.SetBool("IsGround", false);
     }
 }
