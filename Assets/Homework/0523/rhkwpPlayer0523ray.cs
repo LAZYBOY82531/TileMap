@@ -10,7 +10,6 @@ public class rhkwpPlayer0523ray : MonoBehaviour
     [SerializeField] private float movePower;
     [SerializeField] private float jumpPower;
     [SerializeField] private float maxSpeed;
-    [SerializeField] LayerMask groundLayer;
     private Animator anim;
     private SpriteRenderer renderer;
     public bool isGround;
@@ -53,7 +52,7 @@ public class rhkwpPlayer0523ray : MonoBehaviour
 
     private void GroundCheck()
     {
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 1.5f, groundLayer);
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 1.5f, LayerMask.GetMask("Ground"));
         Debug.DrawRay(transform.position, new Vector3(hit.point.x, hit.point.y) - transform.position, Color.red);
         if (hit.collider != null)
         {
