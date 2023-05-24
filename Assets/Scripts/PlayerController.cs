@@ -65,7 +65,6 @@ public class PlayerController : MonoBehaviour
         Debug.DrawRay(transform.position, new Vector3(hit.point.x, hit.point.y) - transform.position, Color.red);
         if(hit.collider != null)
         {
-            Debug.Log(hit.collider.gameObject.name);
             isGround = true;
             anim.SetBool("IsGround", true);
         }
