@@ -1,123 +1,260 @@
+using BeebackState;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
+using static UnityEngine.RuleTile.TilingRuleOutput;
 
-public class BeeBack : MonoBehaviour
+public class Beeback : MonoBehaviour
 {
-    public enum State { Idle, Trace, Return, Attack, Patrol }
-
     private State curState;
-    [SerializeField] private float detectRange;
-    [SerializeField] private float moveSpeed;
-    [SerializeField] private float attackRange;
-    [SerializeField] private Transform[] patrolPoints;
+    public float detectRange;
+    public float moveSpeed;
+    public float attackRange;
+    public float RunawayRange;
+    public GameObject something;
+    public UnityEngine.Transform somethingPoint;
+    public UnityEngine.Transform[] patrolPoints;
 
-    private Transform player;
-    private Vector3 returnPosition;
-    private int patrolIndex = 0;
-    float lastAttackTime = 0;
+    public StateBase[] states;
+    private State curstate;
+    public UnityEngine.Transform player;
+    public Vector3 returnPosition;
+    public int patrolIndex = 0;
 
+
+    private void Awake()
+    {
+        states = new StateBase[(int)State.Size];
+        states[(int)State.Idle] = new IdleState(this);
+        states[(int)State.Trace] = new TraceState(this);
+        states[(int)State.Return] = new ReturnState(this);
+        states[(int)State.Attack] = new AttackState(this);
+        states[(int)State.Patrol] = new PatrolState(this);
+        states[(int)State.Runaway] = new RunawayState(this);
+    }
     private void Start()
     {
         curState = State.Idle;
+        states[(int)curState].Enter();
+
         player = GameObject.FindGameObjectWithTag("Player").transform;
         returnPosition = transform.position;
     }
-
     private void Update()
     {
-        switch (curState)
-        {
-            case State.Idle:
-                IdleUpdate();
-                break;
-            case State.Trace:
-                TraceUpdate();
-                break;
-            case State.Return:
-                ReturnUpdate();
-                break;
-            case State.Attack:
-                AttackUpdate();
-                break;
-            case State.Patrol:
-                PatrolUpdate();
-                break;
-        }
+        states[(int)curState].Update();
     }
-    float idleTime = 0;
-    private void IdleUpdate()
+    public void StateChange(State state)
     {
-        if (idleTime > 2)
-        {
-            idleTime = 0;
-            patrolIndex = (patrolIndex + 1) % patrolPoints.Length;
-            curState = State.Patrol;
-        }
-        idleTime += Time.deltaTime;
-        if (Vector2.Distance(player.position, transform.position) < detectRange)
-        {
-            curState = State.Trace;
-        }
+        states[(int)curState].Exit();
+        curState = state;
+        states[(int)curState].Enter();
     }
+}
 
-    private void TraceUpdate()
+namespace BeebackState
+{
+    public enum State { Idle, Trace, Return, Attack, Patrol, Runaway, Size }
+
+    public class IdleState : StateBase
     {
-        Vector2 dir = (player.position - transform.position).normalized;
-        transform.Translate(dir * moveSpeed * Time.deltaTime);
+        private Beeback beeback;
+        private float idleTime;
 
-        if (Vector2.Distance(player.position, transform.position) > detectRange)
+        public IdleState(Beeback bee)
         {
-            curState = State.Return;
+            this.beeback = bee;
         }
-        else if (Vector2.Distance(player.position, transform.position) < attackRange)
+        public override void Enter()
         {
-            curState = State.Attack;
+            Debug.Log("IdleEnter");
+        }
+        public override void Exit()
+        {
+            Debug.Log("IdleExit");
+        }
+
+        public override void Update()
+        {
+            if (idleTime > 2)
+            {
+                idleTime = 0;
+                beeback.patrolIndex = (beeback.patrolIndex + 1) % beeback.patrolPoints.Length;
+                beeback.StateChange(State.Patrol);
+            }
+            idleTime += Time.deltaTime;
+            if (Vector2.Distance(beeback.player.position, beeback.transform.position) < beeback.detectRange)
+            {
+                beeback.StateChange(State.Trace);
+            }
         }
     }
 
-    private void ReturnUpdate()
+    public class TraceState : StateBase
     {
-        Vector2 dir = (returnPosition - transform.position).normalized;
-        transform.Translate(dir * moveSpeed * Time.deltaTime);
+        private Beeback bee;
 
-        if (Vector2.Distance(transform.position, returnPosition) < 0.02f)
+        public TraceState(Beeback bee)
         {
-            curState = State.Idle;
+            this.bee = bee;
         }
-        else if (Vector2.Distance(player.position, transform.position) < detectRange)
+        public override void Enter()
         {
-            curState = State.Trace;
+            Debug.Log("TraceEnter");
+        }
+        public override void Exit()
+        {
+            Debug.Log("TraceExit");
+        }
+        public override void Update()
+        {
+            Vector2 dir = (bee.player.position - bee.transform.position).normalized;
+            bee.transform.Translate(dir * bee.moveSpeed * Time.deltaTime);
+
+            if (Vector2.Distance(bee.player.position, bee.transform.position) > bee.detectRange)
+            {
+                bee.StateChange(State.Return);
+            }
+            else if (Vector2.Distance(bee.player.position, bee.transform.position) < bee.attackRange)
+            {
+                bee.StateChange(State.Attack);
+            }
         }
     }
 
-    private void AttackUpdate()
+    public class ReturnState : StateBase
     {
-        if (lastAttackTime > 1)
+        private Beeback bee;
+
+        public ReturnState(Beeback bee)
         {
-            Debug.Log("공격");
-            lastAttackTime = 0;
+            this.bee = bee;
         }
-        lastAttackTime += Time.deltaTime;
-        if (Vector2.Distance(player.position, transform.position) > attackRange)
+        public override void Enter()
         {
-            curState = State.Trace;
+            Debug.Log("ReturnEnter");
+        }
+        public override void Exit()
+        {
+            Debug.Log("ReturnExit");
+        }
+        public override void Update()
+        {
+            Vector2 dir = (bee.returnPosition - bee.transform.position).normalized;
+            bee.transform.Translate(dir * bee.moveSpeed * Time.deltaTime);
+
+            if (Vector2.Distance(bee.transform.position, bee.returnPosition) < 0.02f)
+            {
+                bee.StateChange(State.Idle);
+            }
+            else if (Vector2.Distance(bee.player.position, bee.transform.position) < bee.detectRange)
+            {
+                bee.StateChange(State.Trace);
+            }
         }
     }
 
-    private void PatrolUpdate()
+    public class AttackState : StateBase
     {
+        float lastAttackTime = 0;
 
-        Vector2 dir = (patrolPoints[patrolIndex].position - transform.position).normalized;
-        transform.Translate(dir * moveSpeed * Time.deltaTime);
+        private Beeback bee;
 
-        if (Vector2.Distance(transform.position, patrolPoints[patrolIndex].position) < 0.02f)
+        public AttackState(Beeback bee)
         {
-            curState = State.Idle;
+            this.bee = bee;
         }
-        else if (Vector2.Distance(player.position, transform.position) < detectRange)
+        public override void Enter()
         {
-            curState = State.Trace;
+            Debug.Log("AttackEnter");
+        }
+        public override void Exit()
+        {
+            Debug.Log("AttackExit");
+        }
+        public override void Update()
+        {
+            if (lastAttackTime > 1)
+            {
+                Debug.Log("공격");
+                lastAttackTime = 0;
+            }
+            lastAttackTime += Time.deltaTime;
+            if (Vector2.Distance(bee.player.position, bee.transform.position) > bee.attackRange)
+            {
+                bee.StateChange(State.Trace);
+            }
+            else if (Vector2.Distance(bee.player.position, bee.transform.position) < bee.RunawayRange)
+            {
+                bee.StateChange(State.Runaway);
+            }
+        }
+
+        private void Instantiate(object bulletPrefab, object position, object rotation)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class PatrolState : StateBase
+    {
+        private Beeback bee;
+
+        public PatrolState(Beeback bee)
+        {
+            this.bee = bee;
+        }
+        public override void Enter()
+        {
+            Debug.Log("PatrolEnter");
+            bee.patrolIndex = (bee.patrolIndex + 1) % bee.patrolPoints.Length;
+        }
+        public override void Exit()
+        {
+            Debug.Log("PatrolExit");
+        }
+        public override void Update()
+        {
+            Vector2 dir = (bee.patrolPoints[bee.patrolIndex].position - bee.transform.position).normalized;
+            bee.transform.Translate(dir * bee.moveSpeed * Time.deltaTime);
+
+            if (Vector2.Distance(bee.transform.position, bee.patrolPoints[bee.patrolIndex].position) < 0.02f)
+            {
+                bee.StateChange(State.Idle);
+            }
+            else if (Vector2.Distance(bee.player.position, bee.transform.position) < bee.detectRange)
+            {
+                bee.StateChange(State.Trace);
+            }
+        }
+    }
+    public class RunawayState : StateBase
+    {
+        private Beeback bee;
+
+        public RunawayState(Beeback bee)
+        {
+            this.bee = bee;
+        }
+        public override void Enter()
+        {
+            Debug.Log("RunawayEnter");
+        }
+        public override void Exit()
+        {
+            Debug.Log("RunawayExit");
+        }
+        public override void Update()
+        {
+            Vector2 dir = -(bee.patrolPoints[bee.patrolIndex].position - bee.transform.position);
+            bee.transform.Translate(dir * bee.moveSpeed * Time.deltaTime);
+
+            if (Vector2.Distance(bee.player.position, bee.transform.position) < bee.attackRange)
+            {
+                bee.StateChange(State.Attack);
+            }
         }
     }
 }
